@@ -20,14 +20,15 @@ class TestCourierAPI(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.create_url = 'https://qa-scooter.praktikum-services.ru/api/v1/courier'
-        cls.courier_data = generate_random_courier_data()
         cls.courier_id = None
+
 
     @allure.title('Создание курьера')
     def test_create_courier(self):
         valid_courier_data = generate_random_courier_data()
         response = requests.post(self.create_url, json=valid_courier_data)
         assert response.status_code == 201 and 'ok' in response.json()
+        self.delete_user(valid_courier_data.get('id'))
 
 
     @allure.title('Создание уже имеющегося курьера')
@@ -40,6 +41,8 @@ class TestCourierAPI(unittest.TestCase):
         duplicate_response = requests.post(self.create_url, json=valid_courier_data)
         assert duplicate_response.status_code == 409
         assert duplicate_response.json().get('message') == "Этот логин уже используется. Попробуйте другой."
+        self.delete_user(valid_courier_data.get('id'))
+
 
     @allure.title('Создание курьера без логина')
     def test_create_courier_without_login(self):
@@ -50,6 +53,8 @@ class TestCourierAPI(unittest.TestCase):
         response = requests.post(self.create_url, json=courier_data_without_login)
 
         assert response.status_code == 400 and response.json().get('message') == "Недостаточно данных для создания учетной записи"
+        self.delete_user(valid_courier_data.get('id'))
+
 
     @allure.title('Создание курьера без пароля')
     def test_create_courier_without_password(self):
@@ -70,6 +75,8 @@ class TestCourierAPI(unittest.TestCase):
         response = requests.post(self.create_url, json=courier_data_without_firstName)
         assert response.status_code == 201 and 'ok' in response.json()
         TestCourierAPI.courier_id = response.json().get('id')
+        self.delete_user(valid_courier_data.get('id'))
+
 
     @allure.title('Авторизация курьера')
     def test_courier_can_login(self):
@@ -81,19 +88,21 @@ class TestCourierAPI(unittest.TestCase):
             "password": valid_courier_data['password']
         })
         assert response.status_code == 200 and 'id' in response.json()
+        self.delete_user(valid_courier_data.get('id'))
+
 
     @allure.title('Авторизация курьера без логина')
     def test_login_without_login(self):
         response = requests.post(self.login_url, json={
             "login": '',
-            "password": self.__class__.courier_data['password']
+            "password": 'password'
         })
         assert response.status_code == 400 and response.json().get('message') == "Недостаточно данных для входа"
 
     @allure.title('Авторизация курьера без пароля')
     def test_login_without_password(self):
         response = requests.post(self.login_url, json={
-            "login": self.__class__.courier_data['password'],
+            "login": "user_login@mail.ru",
             "password": ''
         })
         assert response.status_code == 400 and response.json().get('message') == "Недостаточно данных для входа"
@@ -111,6 +120,7 @@ class TestCourierAPI(unittest.TestCase):
         }
         login_response = requests.post(self.login_url, json=invalid_login_data)
         assert login_response.status_code == 404 and login_response.json().get('message') == "Учетная запись не найдена"
+        self.delete_user(valid_courier_data.get('id'))
 
 
     @allure.title('Авторизация курьера с неверным паролем')
@@ -125,6 +135,8 @@ class TestCourierAPI(unittest.TestCase):
         }
         login_response = requests.post(self.login_url, json=invalid_password_data)
         assert login_response.status_code == 404 and login_response.json().get('message') == "Учетная запись не найдена"
+        self.delete_user(valid_courier_data.get('id'))
+
 
 
     @allure.title('Авторизация несуществующего курьера')
@@ -135,3 +147,8 @@ class TestCourierAPI(unittest.TestCase):
         }
         login_response = requests.post(self.login_url, json=login_data)
         assert login_response.status_code == 404 and login_response.json().get('message') == "Учетная запись не найдена"
+
+    def delete_user(self, courier_id):
+        response = requests.delete(f"{self.create_url}/{courier_id}")
+        if response.status_code != 200:
+            print(f"Ошибка при удалении курьера с ID {courier_id}: {response.json()}")

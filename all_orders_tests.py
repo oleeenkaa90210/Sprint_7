@@ -33,6 +33,7 @@ class TestOrderCreation:
         response = requests.post(self.order_url, json=order_data)
         assert response.status_code == 201 and 'track' in response.json()
 
+class TestGetOrders:
     @allure.title('Получение списка заказов')
     def test_get_orders_with_empty_data(self):
         response = requests.get(self.order_url)
